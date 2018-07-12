@@ -49,7 +49,7 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 	}
 
 	public function inGroup($uid, $gid) {
-		return true;
+		return $gid === $this->groupName;
 	}
 
 	public function getUserGroups($uid) {
