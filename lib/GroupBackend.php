@@ -21,9 +21,7 @@
 
 namespace OCA\GroupEveryone;
 
-use OCP\Group\Backend\ABackend;
-use OCP\Group\Backend\ICountUsersBackend;
-use OCP\Group\Backend\IGroupDetailsBackend;
+use OC\Group\Backend;
 use OCP\IL10N;
 use OCP\IUser;
 use OCP\IUserManager;
@@ -31,7 +29,7 @@ use OCP\IUserManager;
 /**
  * Provides a virtual group containing all users on the instance.
  */
-class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetailsBackend {
+class GroupBackend extends Backend {
 	/** @var IUserManager */
 	private $userManager;
 
