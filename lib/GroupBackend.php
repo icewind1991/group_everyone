@@ -57,7 +57,7 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 	}
 
 	public function getGroups($search = '', $limit = -1, $offset = 0) {
-		return $offset == 0 ? [$this->groupName] : [];
+		return $offset === 0 ? [$this->groupName] : [];
 	}
 
 	public function groupExists($gid) {

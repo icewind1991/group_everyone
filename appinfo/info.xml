@@ -2,20 +2,28 @@
 <info>
 	<id>group_everyone</id>
 	<name>Everyone Group</name>
+	<summary>Adds a virtual "Everyone" group</summary>
 	<description>
 		Adds a virtual "Everyone" group.
 	</description>
+
 	<version>0.1.0</version>
-	<licence>AGPL</licence>
+	<licence>agpl</licence>
 	<author>Robin Appelman</author>
-	<dependencies>
-		<nextcloud min-version="14" max-version="14" />
-	</dependencies>
-	<category>auth</category>
 
 	<namespace>GroupEveryone</namespace>
 
 	<types>
 		<authentication/>
 	</types>
+
+	<category>tools</category>
+
+	<website>https://github.com/icewind1991/group_everyone</website>
+	<bugs>https://github.com/icewind1991/group_everyone/issues</bugs>
+	<repository type="git">https://github.com/icewind1991/group_everyone.git</repository>
+
+	<dependencies>
+		<nextcloud min-version="14" max-version="14" />
+	</dependencies>
 </info>
