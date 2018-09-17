@@ -56,7 +56,13 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 		return [$this->groupName];
 	}
 
-	public function getGroups($search = '', $limit = null, $offset = 0) {
+	public function getGroups($search = '', $limit = -1, $offset = 0) {
+		// Guard "$limit" which will be used in a SQL Query.
+		// At least in MySQL, LIMIT has to be a nonnegative integer
+		// (however, 'null' works fine).  Changing the interfaces (and implementations)
+		// to default to a valid value should be a TODO upstream.
+		$limit = ($limit < 0) ? null : $limit;
+
 		return ($offset === 0 || $offset === null) ? [$this->groupName] : [];
 	}
 
@@ -72,7 +78,13 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 		}
 	}
 
-	public function usersInGroup($gid, $search = '', $limit = null, $offset = 0) {
+	public function usersInGroup($gid, $search = '', $limit = -1, $offset = 0) {
+		// Guard "$limit" which will be used in a SQL Query.
+		// At least in MySQL, LIMIT has to be a nonnegative integer
+		// (however, 'null' works fine).  Changing the interfaces (and implementations)
+		// to default to a valid value should be a TODO upstream.
+		$limit = ($limit < 0) ? null : $limit;
+
 		if ($gid === $this->groupName) {
 			$users = $this->userManager->search($search, $limit, $offset);
 			return array_map(function (IUser $user) {
