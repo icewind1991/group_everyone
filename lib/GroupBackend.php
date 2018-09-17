@@ -56,7 +56,7 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 		return [$this->groupName];
 	}
 
-	public function getGroups($search = '', $limit = -1, $offset = 0) {
+	public function getGroups($search = '', $limit = null, $offset = 0) {
 		return ($offset === 0 || $offset === null) ? [$this->groupName] : [];
 	}
 
@@ -72,7 +72,7 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 		}
 	}
 
-	public function usersInGroup($gid, $search = '', $limit = -1, $offset = 0) {
+	public function usersInGroup($gid, $search = '', $limit = null, $offset = 0) {
 		if ($gid === $this->groupName) {
 			$users = $this->userManager->search($search, $limit, $offset);
 			return array_map(function (IUser $user) {
