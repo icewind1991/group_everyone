@@ -8,9 +8,7 @@ sign_dir=$(build_dir)/sign
 package_name=$(app_name)
 cert_dir=$(HOME)/.nextcloud/certificates
 webpack=node_modules/.bin/webpack
-version+=0.1.1
-
-all: build/main.js
+version+=0.1.2
 
 clean:
 	rm -rf $(sign_dir)
