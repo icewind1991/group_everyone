@@ -12,7 +12,7 @@ version+=0.1.4
 
 clean:
 	rm -rf $(sign_dir)
-	rm -rf $(build_dir)/$(app_name)-$(version).tar.gz
+	rm -rf $(build_dir)
 
 release: appstore create-tag
 
