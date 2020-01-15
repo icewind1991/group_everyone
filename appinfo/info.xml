@@ -7,7 +7,7 @@
 		Adds a virtual "Everyone" group.
 	</description>
 
-	<version>0.1.2</version>
+	<version>0.1.4</version>
 	<licence>agpl</licence>
 	<author>Robin Appelman</author>
 
