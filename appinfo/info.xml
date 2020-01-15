@@ -24,6 +24,6 @@
 	<repository type="git">https://github.com/icewind1991/group_everyone.git</repository>
 
 	<dependencies>
-		<nextcloud min-version="14" max-version="16" />
+		<nextcloud min-version="16" max-version="18" />
 	</dependencies>
 </info>
