@@ -23,7 +23,10 @@ namespace OCA\GroupEveryone\AppInfo;
 
 use OC\Server;
 use OCA\GroupEveryone\GroupBackend;
+use OCA\GroupEveryone\UserCreatedListener;
 use OCP\AppFramework\App;
+use OCP\EventDispatcher\IEventDispatcher;
+use OCP\User\Events\UserCreatedEvent;
 
 class Application extends App {
 	public function __construct(array $urlParams = array()) {
@@ -35,6 +38,11 @@ class Application extends App {
 		/** @var Server $server */
 		$server = $container->getServer();
 		$server->getGroupManager()->addBackend($this->getGroupBackend());
+
+		/** @var IEventDispatcher $dispatcher */
+		$dispatcher = $container->query(IEventDispatcher::class);
+
+		$dispatcher->addServiceListener(UserCreatedEvent::class, UserCreatedListener::class);
 	}
 
 	/**
