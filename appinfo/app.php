@@ -21,4 +21,4 @@
 
 use OCA\GroupEveryone\AppInfo\Application;
 
-(new Application())->setup();
+(\OC::$server->query(Application::class))->setup();
