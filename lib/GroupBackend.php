@@ -72,7 +72,7 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 
 	public function countUsersInGroup(string $gid, string $search = ''): int {
 		if ($gid === $this->groupName) {
-			return array_sum($this->userManager->countUsers());
+			return (int)array_sum($this->userManager->countUsers());
 		} else {
 			return 0;
 		}

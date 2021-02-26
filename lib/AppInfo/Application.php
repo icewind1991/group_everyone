@@ -21,23 +21,23 @@
 
 namespace OCA\GroupEveryone\AppInfo;
 
-use OC\Server;
 use OCA\GroupEveryone\GroupBackend;
 use OCA\GroupEveryone\UserCreatedListener;
 use OCP\AppFramework\App;
 use OCP\EventDispatcher\IEventDispatcher;
+use OCP\IGroupManager;
 use OCP\User\Events\UserCreatedEvent;
 
 class Application extends App {
-	public function __construct(array $urlParams = array()) {
+	public function __construct(array $urlParams = []) {
 		parent::__construct('group_everyone', $urlParams);
 	}
 
 	public function setup() {
 		$container = $this->getContainer();
-		/** @var Server $server */
-		$server = $container->getServer();
-		$server->getGroupManager()->addBackend($this->getGroupBackend());
+		/** @var IGroupManager $groupManager */
+		$groupManager = $container->query(IGroupManager::class);
+		$groupManager->addBackend($this->getGroupBackend());
 
 		/** @var IEventDispatcher $dispatcher */
 		$dispatcher = $container->query(IEventDispatcher::class);
