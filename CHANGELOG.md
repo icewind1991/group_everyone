@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.7
+- Compatible with Nextcloud 21
+
+## v0.1.6
+- Compatible with Nextcloud 20
+
 ## v0.1.5
 - Fix existing shares to "everyone" not showing up for newly created users
 - Add support for the upcoming Nextcloud 19 release
