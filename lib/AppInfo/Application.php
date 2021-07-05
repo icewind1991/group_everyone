@@ -24,31 +24,26 @@ namespace OCA\GroupEveryone\AppInfo;
 use OCA\GroupEveryone\GroupBackend;
 use OCA\GroupEveryone\UserCreatedListener;
 use OCP\AppFramework\App;
-use OCP\EventDispatcher\IEventDispatcher;
+use OCP\AppFramework\Bootstrap\IBootContext;
+use OCP\AppFramework\Bootstrap\IBootstrap;
+use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\IGroupManager;
 use OCP\User\Events\UserCreatedEvent;
 
-class Application extends App {
+class Application extends App implements IBootstrap {
 	public function __construct(array $urlParams = []) {
 		parent::__construct('group_everyone', $urlParams);
 	}
 
-	public function setup() {
-		$container = $this->getContainer();
-		/** @var IGroupManager $groupManager */
-		$groupManager = $container->query(IGroupManager::class);
-		$groupManager->addBackend($this->getGroupBackend());
-
-		/** @var IEventDispatcher $dispatcher */
-		$dispatcher = $container->query(IEventDispatcher::class);
-
-		$dispatcher->addServiceListener(UserCreatedEvent::class, UserCreatedListener::class);
+	public function register(IRegistrationContext $context): void {
+		$context->registerEventListener(UserCreatedEvent::class, UserCreatedListener::class);
 	}
 
-	/**
-	 * @return GroupBackend
-	 */
-	private function getGroupBackend() {
-		return $this->getContainer()->query(GroupBackend::class);
+	public function boot(IBootContext $context): void {
+		$context->injectFn([$this, 'registerGroupManager']);
+	}
+
+	public function registerGroupManager(IGroupManager $groupManager, GroupBackend $backend) {
+		$groupManager->addBackend($backend);
 	}
 }
