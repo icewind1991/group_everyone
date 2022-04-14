@@ -7,7 +7,7 @@
 		Adds a virtual "Everyone" group.
 	</description>
 
-	<version>0.1.9</version>
+	<version>0.1.10</version>
 	<licence>agpl</licence>
 	<author>Robin Appelman</author>
 
@@ -24,6 +24,6 @@
 	<repository type="git">https://github.com/icewind1991/group_everyone.git</repository>
 
 	<dependencies>
-		<nextcloud min-version="21" max-version="23" />
+		<nextcloud min-version="22" max-version="24" />
 	</dependencies>
 </info>
