@@ -31,8 +31,8 @@ use OCP\IGroupManager;
 use OCP\User\Events\UserCreatedEvent;
 
 class UserCreatedListener implements IEventListener {
-	private $dispatcher;
-	private $groupManager;
+	private IEventDispatcher $dispatcher;
+	private IGroupManager $groupManager;
 
 	public function __construct(IEventDispatcher $dispatcher, IGroupManager $groupManager) {
 		$this->dispatcher = $dispatcher;
