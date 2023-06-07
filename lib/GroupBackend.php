@@ -63,7 +63,7 @@ class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetails
 		// to default to a valid value should be a TODO upstream.
 		$limit = ($limit < 0) ? null : $limit;
 
-		return ($offset === 0 || $offset === null) ? [$this->groupName] : [];
+		return !$offset ? [$this->groupName] : [];
 	}
 
 	public function groupExists($gid) {
