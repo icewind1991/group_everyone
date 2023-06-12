@@ -54,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Compatible with Nextcloud 17.
 ### Fixed
 - Fix calendar sharing when using mysql.
+  [#3](https://github.com/icewind1991/group_everyone/pull/3) @fwolfst
 
 ## [0.1.2] - 2019-04-02
 ### Added
