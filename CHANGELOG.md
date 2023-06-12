@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Updated changelog style, added missing releases and release dates.
+  [#28](https://github.com/icewind1991/group_everyone/pull/28) @SimJoSt
 
 ## [0.1.13] - 2023-06-07
 ### Added
