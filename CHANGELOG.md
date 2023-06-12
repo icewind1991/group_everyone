@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.13]
+### Added
+- Compatible with Nextcloud 27.
+
+## [0.1.12]
+### Added
+- Compatible with Nextcloud 26.
+
+## [0.1.11]
+### Added
+- Compatible with Nextcloud 25.
+
+## [0.1.10]
+### Added
+- Compatible with Nextcloud 24.
+
+## [0.1.9]
+### Added
+- Compatible with Nextcloud 23.
+
+## [0.1.8]
+### Added
+- Compatible with Nextcloud 22.
+
 ## [0.1.7]
 ### Added
 - Compatible with Nextcloud 21.
