@@ -30,6 +30,9 @@ use OCP\Group\Events\UserAddedEvent;
 use OCP\IGroupManager;
 use OCP\User\Events\UserCreatedEvent;
 
+/**
+ * @template-implements IEventListener<UserCreatedEvent>
+ */
 class UserCreatedListener implements IEventListener {
 	private IEventDispatcher $dispatcher;
 	private IGroupManager $groupManager;
