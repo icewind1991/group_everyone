@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<phpunit bootstrap="bootstrap.php"
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+		 bootstrap="bootstrap.php"
+		 colors="true"
 		 timeoutForSmallTests="900"
 		 timeoutForMediumTests="900"
 		 timeoutForLargeTests="900"
 >
-	<testsuite name='Nextcloud - Group everyone App Tests'>
-		<directory suffix='.php'>.</directory>
-	</testsuite>
-	<filter>
-		<whitelist>
-			<directory suffix=".php">../</directory>
-			<exclude>
-				<directory suffix=".php">../tests
-				</directory>
-			</exclude>
-		</whitelist>
-	</filter>
+	<testsuites>
+		<testsuite name="Nextcloud - Group everyone App Tests">
+			<directory suffix="Test.php">.</directory>
+		</testsuite>
+	</testsuites>
+	<source>
+		<include>
+			<directory suffix=".php">../lib</directory>
+		</include>
+	</source>
 </phpunit>

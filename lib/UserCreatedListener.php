@@ -1,24 +1,10 @@
 <?php
 
 declare(strict_types=1);
+
 /**
- * @copyright Copyright (c) 2020 Robin Appelman <robin@icewind.nl>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2020 Robin Appelman <robin@icewind.nl>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\GroupEveryone;
@@ -31,15 +17,16 @@ use OCP\IGroupManager;
 use OCP\User\Events\UserCreatedEvent;
 
 /**
+ * Existing shares with the virtual group are only picked up for a newly created
+ * user once the "user added to group" event has been seen for them.
+ *
  * @template-implements IEventListener<UserCreatedEvent>
  */
 class UserCreatedListener implements IEventListener {
-	private IEventDispatcher $dispatcher;
-	private IGroupManager $groupManager;
-
-	public function __construct(IEventDispatcher $dispatcher, IGroupManager $groupManager) {
-		$this->dispatcher = $dispatcher;
-		$this->groupManager = $groupManager;
+	public function __construct(
+		private IEventDispatcher $dispatcher,
+		private IGroupManager $groupManager,
+	) {
 	}
 
 	public function handle(Event $event): void {
@@ -47,7 +34,11 @@ class UserCreatedListener implements IEventListener {
 			return;
 		}
 
-		$group = $this->groupManager->get('everyone');
+		$group = $this->groupManager->get(GroupBackend::GROUP_ID);
+		if ($group === null) {
+			// The backend is not registered (yet), nothing to announce.
+			return;
+		}
 
 		$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $event->getUser()));
 	}

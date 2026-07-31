@@ -1,30 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 /**
- * @copyright Copyright (c) 2018 Robin Appelman <robin@icewind.nl>
- *
- * @license GNU AGPL version 3 or any later version
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
+ * SPDX-FileCopyrightText: 2018 Robin Appelman <robin@icewind.nl>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 
 namespace OCA\GroupEveryone;
 
 use OCP\Group\Backend\ABackend;
+use OCP\Group\Backend\ICountDisabledInGroup;
 use OCP\Group\Backend\ICountUsersBackend;
+use OCP\Group\Backend\IGetDisplayNameBackend;
 use OCP\Group\Backend\IGroupDetailsBackend;
+use OCP\Group\Backend\INamedBackend;
+use OCP\Group\Backend\ISearchableGroupBackend;
 use OCP\IL10N;
 use OCP\IUser;
 use OCP\IUserManager;
@@ -32,75 +23,130 @@ use OCP\IUserManager;
 /**
  * Provides a virtual group containing all users on the instance.
  */
-class GroupBackend extends ABackend implements ICountUsersBackend, IGroupDetailsBackend {
-	/** @var IUserManager */
-	private $userManager;
+class GroupBackend extends ABackend implements
+	ICountDisabledInGroup,
+	ICountUsersBackend,
+	IGetDisplayNameBackend,
+	IGroupDetailsBackend,
+	INamedBackend,
+	ISearchableGroupBackend {
+	public const GROUP_ID = 'everyone';
 
-	/** @var string */
-	private $groupName;
-
-	/** @var IL10N */
-	private $l10n;
-
-
-	public function __construct(IUserManager $userManager, IL10N $l10n, $groupName = 'everyone') {
-		$this->groupName = $groupName;
-		$this->userManager = $userManager;
-		$this->l10n = $l10n;
+	public function __construct(
+		private IUserManager $userManager,
+		private IL10N $l10n,
+		private string $groupName = self::GROUP_ID,
+	) {
 	}
 
-	public function inGroup($uid, $gid) {
+	public function inGroup($uid, $gid): bool {
 		return $gid === $this->groupName;
 	}
 
-	public function getUserGroups($uid) {
+	/**
+	 * @return list<string>
+	 */
+	public function getUserGroups($uid): array {
 		return [$this->groupName];
 	}
 
-	public function getGroups($search = '', $limit = -1, $offset = 0) {
-		// Guard "$limit" which will be used in a SQL Query.
-		// At least in MySQL, LIMIT has to be a nonnegative integer
-		// (however, 'null' works fine).  Changing the interfaces (and implementations)
-		// to default to a valid value should be a TODO upstream.
-		$limit = ($limit < 0) ? null : $limit;
+	/**
+	 * @return list<string>
+	 */
+	public function getGroups(string $search = '', int $limit = -1, int $offset = 0): array {
+		// A single virtual group can only ever be the first result. Like the
+		// database backend, a limit of 0 is treated as "no limit" here.
+		if ($offset > 0) {
+			return [];
+		}
 
-		return !$offset ? [$this->groupName] : [];
+		return $this->matchesGroupSearch($search) ? [$this->groupName] : [];
 	}
 
-	public function groupExists($gid) {
+	public function groupExists($gid): bool {
 		return $gid === $this->groupName;
 	}
 
 	public function countUsersInGroup(string $gid, string $search = ''): int {
-		if ($gid === $this->groupName) {
-			return (int)array_sum($this->userManager->countUsers());
-		} else {
+		if ($gid !== $this->groupName) {
 			return 0;
 		}
+
+		if ($search !== '') {
+			// There is no "count matching users" API that spans all user backends,
+			// so the matches have to be materialised to be counted.
+			return count($this->userManager->searchDisplayName($search));
+		}
+
+		$count = $this->userManager->countUsersTotal();
+		return $count === false ? 0 : $count;
 	}
 
-	public function usersInGroup($gid, $search = '', $limit = -1, $offset = 0) {
+	public function countDisabledInGroup(string $gid): int {
+		if ($gid !== $this->groupName) {
+			return 0;
+		}
+
+		return (int)$this->userManager->countDisabledUsers();
+	}
+
+	/**
+	 * @return array<string,IUser>
+	 */
+	public function searchInGroup(string $gid, string $search = '', int $limit = -1, int $offset = 0): array {
+		if ($gid !== $this->groupName || $limit === 0) {
+			return [];
+		}
+
 		// Guard "$limit" which will be used in a SQL Query.
 		// At least in MySQL, LIMIT has to be a nonnegative integer
 		// (however, 'null' works fine).  Changing the interfaces (and implementations)
 		// to default to a valid value should be a TODO upstream.
-		$limit = ($limit < 0) ? null : $limit;
+		$users = $this->userManager->searchDisplayName($search, $limit < 0 ? null : $limit, $offset);
 
-		if ($gid === $this->groupName) {
-			$users = $this->userManager->search($search, $limit, $offset);
-			return array_map(function (IUser $user) {
-				return $user->getUID();
-			}, $users);
-		} else {
-			return [];
+		$result = [];
+		foreach ($users as $user) {
+			$result[$user->getUID()] = $user;
 		}
+		return $result;
 	}
 
+	/**
+	 * @return list<string>
+	 */
+	public function usersInGroup($gid, $search = '', $limit = -1, $offset = 0): array {
+		// A null limit reached this untyped method before and means "no limit"
+		$limit = $limit === null ? -1 : (int)$limit;
+
+		return array_keys($this->searchInGroup((string)$gid, (string)$search, $limit, (int)$offset));
+	}
+
+	/**
+	 * @return array{displayName?: string}
+	 */
 	public function getGroupDetails(string $gid): array {
-		if ($gid === $this->groupName) {
-			return ['displayName' => $this->l10n->t('Everyone')];
-		} else {
+		if ($gid !== $this->groupName) {
 			return [];
 		}
+
+		return ['displayName' => $this->getDisplayName($gid)];
+	}
+
+	public function getDisplayName(string $gid): string {
+		return $gid === $this->groupName ? $this->l10n->t('Everyone') : '';
+	}
+
+	public function getBackendName(): string {
+		return 'Everyone';
+	}
+
+	/**
+	 * Mirrors the group search of the database backend, which matches the group
+	 * id as well as the display name case-insensitively.
+	 */
+	private function matchesGroupSearch(string $search): bool {
+		return $search === ''
+			|| mb_stripos($this->groupName, $search) !== false
+			|| mb_stripos($this->getDisplayName($this->groupName), $search) !== false;
 	}
 }

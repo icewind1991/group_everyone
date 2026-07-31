@@ -1,12 +1,12 @@
 {
 	"type": "project",
 	"require-dev": {
-		"nextcloud/ocp": "dev-master"
+		"nextcloud/ocp": "dev-stable32"
 	},
 	"require": {
-		"bamarni/composer-bin-plugin": "^1.8"
+		"bamarni/composer-bin-plugin": "^1.9"
 	},
-	"license": "AGPLv3",
+	"license": "AGPL-3.0-or-later",
 	"scripts": {
 		"post-install-cmd": [
 			"@composer bin all install --ansi"
@@ -29,6 +29,12 @@
 		},
 		"platform": {
 			"php": "8.1"
+		}
+	},
+	"extra": {
+		"bamarni-bin": {
+			"bin-links": true,
+			"forward-command": false
 		}
 	}
 }

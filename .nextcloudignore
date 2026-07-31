@@ -9,5 +9,9 @@ krankerl.toml
 screenshots
 .nextcloudignore
 .php_cs*
+.php-cs-fixer.dist.php
+.php-cs-fixer.cache
 psalm*
 composer*
+tests
+vendor-bin
