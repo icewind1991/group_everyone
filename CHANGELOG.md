@@ -6,7 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Implement `ISearchableGroupBackend`, so the server no longer has to resolve every
+  member of the virtual group one uid at a time.
+- Implement `INamedBackend`, so group management shows "Everyone" instead of the
+  raw backend class name.
+- Implement `ICountDisabledInGroup` and `IGetDisplayNameBackend`.
+
+### Fixed
+- Group searches no longer return the virtual group for every search term. The
+  search term is matched against the group id as well as the translated display
+  name, like the database backend does.
+- The user count of the virtual group now honours the search term instead of
+  always reporting the total number of users.
+- Creating a user no longer fails with a `TypeError` when the virtual group cannot
+  be resolved.
+- The test suite runs again: it required PHPUnit 9, which can no longer load the
+  server test case of the supported Nextcloud versions.
+- `composer update` works again: the pinned `nextcloud/ocp` dev-master requires
+  PHP 8.3, which conflicts with the declared platform and supported server versions.
+- Release archives no longer ship the test suite and dev tooling.
+
 ### Changed
+- Replaced the deprecated `IUserManager::search()` with `searchDisplayName()` and
+  `array_sum(countUsers())` with `countUsersTotal()`.
+- Bumped PHPUnit to 10.5, nextcloud/coding-standard to 1.5 and pinned
+  `nextcloud/ocp` to the minimum supported server version.
 - Updated changelog style, added missing releases and release dates.
   [#28](https://github.com/icewind1991/group_everyone/pull/28) @SimJoSt
 
