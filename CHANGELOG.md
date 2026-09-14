@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Option to exclude guest accounts from the group: `occ group_everyone:exclude-guests --on`.
+  [#14](https://github.com/icewind1991/group_everyone/issues/14)
 - Implement `ISearchableGroupBackend`, so the server no longer has to resolve every
   member of the virtual group one uid at a time.
 - Implement `INamedBackend`, so group management shows "Everyone" instead of the
