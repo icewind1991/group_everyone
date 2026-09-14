@@ -27,4 +27,8 @@
 	<dependencies>
 		<nextcloud min-version="33" max-version="35" />
 	</dependencies>
+
+	<commands>
+		<command>OCA\GroupEveryone\Command\ExcludeGuests</command>
+	</commands>
 </info>

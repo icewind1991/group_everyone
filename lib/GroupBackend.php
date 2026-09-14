@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\GroupEveryone;
 
+use OCA\GroupEveryone\AppInfo\Application;
 use OCP\Group\Backend\ABackend;
 use OCP\Group\Backend\ICountDisabledInGroup;
 use OCP\Group\Backend\ICountUsersBackend;
@@ -16,9 +17,13 @@ use OCP\Group\Backend\IGetDisplayNameBackend;
 use OCP\Group\Backend\IGroupDetailsBackend;
 use OCP\Group\Backend\INamedBackend;
 use OCP\Group\Backend\ISearchableGroupBackend;
+use OCP\IAppConfig;
 use OCP\IL10N;
 use OCP\IUser;
+use OCP\IUserBackend;
 use OCP\IUserManager;
+use OCP\User\Backend\ICountUsersBackend as ICountUsersUserBackend;
+use OCP\UserInterface;
 
 /**
  * Provides a virtual group containing all users on the instance.
@@ -31,23 +36,26 @@ class GroupBackend extends ABackend implements
 	INamedBackend,
 	ISearchableGroupBackend {
 	public const GROUP_ID = 'everyone';
+	public const CONFIG_EXCLUDE_GUESTS = 'exclude_guests';
+	private const GUESTS_BACKEND = 'Guests';
 
 	public function __construct(
 		private IUserManager $userManager,
 		private IL10N $l10n,
+		private IAppConfig $appConfig,
 		private string $groupName = self::GROUP_ID,
 	) {
 	}
 
 	public function inGroup($uid, $gid): bool {
-		return $gid === $this->groupName;
+		return $gid === $this->groupName && !$this->isExcluded((string)$uid);
 	}
 
 	/**
 	 * @return list<string>
 	 */
 	public function getUserGroups($uid): array {
-		return [$this->groupName];
+		return $this->isExcluded((string)$uid) ? [] : [$this->groupName];
 	}
 
 	/**
@@ -75,11 +83,21 @@ class GroupBackend extends ABackend implements
 		if ($search !== '') {
 			// There is no "count matching users" API that spans all user backends,
 			// so the matches have to be materialised to be counted.
-			return count($this->userManager->searchDisplayName($search));
+			return count($this->searchInGroup($gid, $search));
 		}
 
 		$count = $this->userManager->countUsersTotal();
-		return $count === false ? 0 : $count;
+		if ($count === false) {
+			return 0;
+		}
+		if ($this->excludeGuests()) {
+			foreach ($this->getGuestBackends() as $backend) {
+				if ($backend instanceof ICountUsersUserBackend) {
+					$count -= (int)$backend->countUsers();
+				}
+			}
+		}
+		return $count;
 	}
 
 	public function countDisabledInGroup(string $gid): int {
@@ -87,7 +105,15 @@ class GroupBackend extends ABackend implements
 			return 0;
 		}
 
-		return (int)$this->userManager->countDisabledUsers();
+		$count = (int)$this->userManager->countDisabledUsers();
+		if ($this->excludeGuests()) {
+			foreach ($this->getGuestUids() as $uid) {
+				if ($this->userManager->get($uid)?->isEnabled() === false) {
+					$count--;
+				}
+			}
+		}
+		return $count;
 	}
 
 	/**
@@ -102,11 +128,19 @@ class GroupBackend extends ABackend implements
 		// At least in MySQL, LIMIT has to be a nonnegative integer
 		// (however, 'null' works fine).  Changing the interfaces (and implementations)
 		// to default to a valid value should be a TODO upstream.
-		$users = $this->userManager->searchDisplayName($search, $limit < 0 ? null : $limit, $offset);
+		$limit = $limit < 0 ? null : $limit;
+		$users = $this->userManager->searchDisplayName($search, $limit, $offset);
 
 		$result = [];
 		foreach ($users as $user) {
 			$result[$user->getUID()] = $user;
+		}
+		if ($this->excludeGuests()) {
+			// The user manager queries every backend with the same limit and offset,
+			// so this removes exactly the guests it returned.
+			foreach ($this->getGuestBackends() as $backend) {
+				$result = array_diff_key($result, $backend->getDisplayNames($search, $limit, $offset));
+			}
 		}
 		return $result;
 	}
@@ -138,6 +172,42 @@ class GroupBackend extends ABackend implements
 
 	public function getBackendName(): string {
 		return 'Everyone';
+	}
+
+	/**
+	 * @return list<string>
+	 */
+	public function getGuestUids(): array {
+		$uids = [];
+		foreach ($this->getGuestBackends() as $backend) {
+			$uids = array_merge($uids, $backend->getUsers());
+		}
+		return $uids;
+	}
+
+	private function excludeGuests(): bool {
+		return $this->appConfig->getValueBool(Application::APP_ID, self::CONFIG_EXCLUDE_GUESTS);
+	}
+
+	/**
+	 * @return list<UserInterface>
+	 */
+	private function getGuestBackends(): array {
+		return array_values(array_filter($this->userManager->getBackends(), function (UserInterface $backend) {
+			return $backend instanceof IUserBackend && $backend->getBackendName() === self::GUESTS_BACKEND;
+		}));
+	}
+
+	private function isExcluded(string $uid): bool {
+		if (!$this->excludeGuests()) {
+			return false;
+		}
+		foreach ($this->getGuestBackends() as $backend) {
+			if ($backend->userExists($uid)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
