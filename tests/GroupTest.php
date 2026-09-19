@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\GroupEveryone\Tests;
 
 use OCA\GroupEveryone\GroupBackend;
+use OCA\Guests\UserBackend as GuestUserBackend;
 use OCP\Group\Backend\ICountDisabledInGroup;
 use OCP\Group\Backend\ICountUsersBackend;
 use OCP\Group\Backend\IGetDisplayNameBackend;
@@ -21,7 +22,6 @@ use OCP\IL10N;
 use OCP\IUser;
 use OCP\IUserBackend;
 use OCP\IUserManager;
-use OCP\User\Backend\ICountUsersBackend as ICountUsersUserBackend;
 use OCP\UserInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use Test\TestCase;
@@ -47,10 +47,12 @@ class GroupTest extends TestCase {
 		$this->backend = new GroupBackend($this->userManager, $this->l10n, $this->appConfig);
 	}
 
-	private function getUser(string $name): IUser {
+	private function getUser(string $name, ?string $displayName = null): IUser {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')
 			->willReturn($name);
+		$user->method('getDisplayName')
+			->willReturn($displayName ?? $name);
 		return $user;
 	}
 
@@ -258,29 +260,19 @@ class GroupTest extends TestCase {
 		], $this->backend->getGroupsDetails(['everyone', 'bar']));
 	}
 
-	private function setUpGuests(): void {
-		$database = $this->createMockForIntersectionOfInterfaces([UserInterface::class, IUserBackend::class]);
-		$database->method('getBackendName')
-			->willReturn('Database');
-		$database->method('userExists')
-			->willReturn(true);
+	private function setUpGuests(): GuestUserBackend&MockObject {
+		$database = $this->createMock(UserInterface::class);
+		$database->method('getDisplayNames')
+			->with('filter', 2, 1)
+			->willReturn(['b' => 'B', 'a' => 'A']);
 
-		$guests = $this->createMockForIntersectionOfInterfaces([UserInterface::class, IUserBackend::class, ICountUsersUserBackend::class]);
-		$guests->method('getBackendName')
-			->willReturn('Guests');
+		$guests = $this->createMock(GuestUserBackend::class);
 		$guests->method('userExists')
 			->willReturnCallback(fn (string $uid): bool => $uid === 'guest');
 		$guests->method('countUsers')
 			->willReturn(2);
 		$guests->method('getUsers')
 			->willReturn(['guest']);
-		$guests->method('getDisplayNames')
-			->with('filter', 2, 1)
-			->willReturn(['guest' => 'Guest']);
-
-		$guest = $this->getUser('guest');
-		$guest->method('isEnabled')
-			->willReturn(false);
 
 		$this->userManager->method('getBackends')
 			->willReturn([$database, $guests]);
@@ -288,16 +280,19 @@ class GroupTest extends TestCase {
 			->willReturn(5);
 		$this->userManager->method('countDisabledUsers')
 			->willReturn(2);
-		$this->userManager->method('get')
-			->with('guest')
-			->willReturn($guest);
-		$this->userManager->method('searchDisplayName')
-			->with('filter', 2, 1)
-			->willReturn([$this->getUser('a'), $this->getUser('b'), $guest]);
+		$this->userManager->method('getDisabledUsers')
+			->willReturn([$this->getUser('c'), $this->getUser('guest')]);
+		$this->userManager->method('getExistingUser')
+			->willReturnCallback(fn (string $uid, ?string $displayName): IUser => $this->getUser($uid, $displayName));
+
+		return $guests;
 	}
 
 	public function testGuestsIncludedByDefault(): void {
 		$this->setUpGuests();
+		$this->userManager->method('searchDisplayName')
+			->with('filter', 2, 1)
+			->willReturn([$this->getUser('a'), $this->getUser('b'), $this->getUser('guest')]);
 
 		$this->assertTrue($this->backend->inGroup('guest', 'everyone'));
 		$this->assertEquals(['everyone'], $this->backend->getUserGroups('guest'));
@@ -307,8 +302,16 @@ class GroupTest extends TestCase {
 	}
 
 	public function testExcludeGuests(): void {
-		$this->setUpGuests();
+		$guests = $this->setUpGuests();
 		$this->excludeGuests = true;
+
+		// Guests have to be left out without listing or loading them one by one
+		$guests->expects($this->never())
+			->method('getDisplayNames');
+		$this->userManager->expects($this->never())
+			->method('searchDisplayName');
+		$this->userManager->expects($this->never())
+			->method('get');
 
 		$this->assertTrue($this->backend->inGroup('a', 'everyone'));
 		$this->assertFalse($this->backend->inGroup('guest', 'everyone'));
@@ -317,6 +320,20 @@ class GroupTest extends TestCase {
 		$this->assertEquals(3, $this->backend->countUsersInGroup('everyone'));
 		$this->assertEquals(1, $this->backend->countDisabledInGroup('everyone'));
 		$this->assertEquals(['a', 'b'], $this->backend->usersInGroup('everyone', 'filter', 2, 1));
+		$this->assertEquals('A', $this->backend->searchInGroup('everyone', 'filter', 2, 1)['a']->getDisplayName());
 		$this->assertEquals(['guest'], $this->backend->getGuestUids());
+	}
+
+	public function testExcludeGuestsIgnoresOtherBackendsNamedGuests(): void {
+		$backend = $this->createMockForIntersectionOfInterfaces([UserInterface::class, IUserBackend::class]);
+		$backend->method('getBackendName')
+			->willReturn('Guests');
+		$backend->method('userExists')
+			->willReturn(true);
+		$this->userManager->method('getBackends')
+			->willReturn([$backend]);
+		$this->excludeGuests = true;
+
+		$this->assertTrue($this->backend->inGroup('user', 'everyone'));
 	}
 }

@@ -18,3 +18,7 @@ require_once __DIR__ . '/../../../lib/base.php';
 require_once __DIR__ . '/../../../tests/autoload.php';
 
 Server::get(IAppManager::class)->loadApp('group_everyone');
+
+if (!class_exists(\OCA\Guests\UserBackend::class)) {
+	require_once __DIR__ . '/stubs/oca_guests_userbackend.php';
+}

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\GroupEveryone;
 
 use OCA\GroupEveryone\AppInfo\Application;
+use OCA\Guests\UserBackend as GuestUserBackend;
 use OCP\Group\Backend\ABackend;
 use OCP\Group\Backend\ICountDisabledInGroup;
 use OCP\Group\Backend\ICountUsersBackend;
@@ -20,9 +21,7 @@ use OCP\Group\Backend\ISearchableGroupBackend;
 use OCP\IAppConfig;
 use OCP\IL10N;
 use OCP\IUser;
-use OCP\IUserBackend;
 use OCP\IUserManager;
-use OCP\User\Backend\ICountUsersBackend as ICountUsersUserBackend;
 use OCP\UserInterface;
 
 /**
@@ -37,7 +36,6 @@ class GroupBackend extends ABackend implements
 	ISearchableGroupBackend {
 	public const GROUP_ID = 'everyone';
 	public const CONFIG_EXCLUDE_GUESTS = 'exclude_guests';
-	private const GUESTS_BACKEND = 'Guests';
 
 	public function __construct(
 		private IUserManager $userManager,
@@ -92,9 +90,7 @@ class GroupBackend extends ABackend implements
 		}
 		if ($this->excludeGuests()) {
 			foreach ($this->getGuestBackends() as $backend) {
-				if ($backend instanceof ICountUsersUserBackend) {
-					$count -= (int)$backend->countUsers();
-				}
+				$count -= (int)$backend->countUsers();
 			}
 		}
 		return $count;
@@ -105,15 +101,16 @@ class GroupBackend extends ABackend implements
 			return 0;
 		}
 
-		$count = (int)$this->userManager->countDisabledUsers();
-		if ($this->excludeGuests()) {
-			foreach ($this->getGuestUids() as $uid) {
-				if ($this->userManager->get($uid)?->isEnabled() === false) {
-					$count--;
-				}
-			}
+		if (!$this->excludeGuests()) {
+			return (int)$this->userManager->countDisabledUsers();
 		}
-		return $count;
+
+		// No backend can count its disabled users, so match the disabled users against the guests
+		$guests = array_flip($this->getGuestUids());
+		return count(array_filter(
+			$this->userManager->getDisabledUsers(),
+			fn (IUser $user): bool => !isset($guests[$user->getUID()]),
+		));
 	}
 
 	/**
@@ -129,18 +126,25 @@ class GroupBackend extends ABackend implements
 		// (however, 'null' works fine).  Changing the interfaces (and implementations)
 		// to default to a valid value should be a TODO upstream.
 		$limit = $limit < 0 ? null : $limit;
-		$users = $this->userManager->searchDisplayName($search, $limit, $offset);
+		if ($this->excludeGuests()) {
+			// Same as IUserManager::searchDisplayName(), minus the guest backends
+			$users = [];
+			foreach ($this->userManager->getBackends() as $backend) {
+				if ($backend instanceof GuestUserBackend) {
+					continue;
+				}
+				foreach ($backend->getDisplayNames($search, $limit, $offset) as $uid => $displayName) {
+					$users[] = $this->userManager->getExistingUser((string)$uid, (string)$displayName);
+				}
+			}
+			usort($users, fn (IUser $a, IUser $b): int => strcasecmp($a->getDisplayName(), $b->getDisplayName()));
+		} else {
+			$users = $this->userManager->searchDisplayName($search, $limit, $offset);
+		}
 
 		$result = [];
 		foreach ($users as $user) {
 			$result[$user->getUID()] = $user;
-		}
-		if ($this->excludeGuests()) {
-			// The user manager queries every backend with the same limit and offset,
-			// so this removes exactly the guests it returned.
-			foreach ($this->getGuestBackends() as $backend) {
-				$result = array_diff_key($result, $backend->getDisplayNames($search, $limit, $offset));
-			}
 		}
 		return $result;
 	}
@@ -190,12 +194,13 @@ class GroupBackend extends ABackend implements
 	}
 
 	/**
-	 * @return list<UserInterface>
+	 * @return list<GuestUserBackend>
 	 */
 	private function getGuestBackends(): array {
-		return array_values(array_filter($this->userManager->getBackends(), function (UserInterface $backend) {
-			return $backend instanceof IUserBackend && $backend->getBackendName() === self::GUESTS_BACKEND;
-		}));
+		return array_values(array_filter(
+			$this->userManager->getBackends(),
+			fn (UserInterface $backend): bool => $backend instanceof GuestUserBackend,
+		));
 	}
 
 	private function isExcluded(string $uid): bool {
