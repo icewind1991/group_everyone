@@ -14,4 +14,7 @@
 	<extraFiles>
 		<directory name="vendor/nextcloud/ocp"/>
 	</extraFiles>
+	<stubs>
+		<file name="tests/stubs/oca_guests_userbackend.php"/>
+	</stubs>
 </psalm>

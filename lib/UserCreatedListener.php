@@ -40,6 +40,10 @@ class UserCreatedListener implements IEventListener {
 			return;
 		}
 
+		if (!$group->inGroup($event->getUser())) {
+			return;
+		}
+
 		$this->dispatcher->dispatchTyped(new UserAddedEvent($group, $event->getUser()));
 	}
 }

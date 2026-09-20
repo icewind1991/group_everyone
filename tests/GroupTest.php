@@ -10,22 +10,28 @@ declare(strict_types=1);
 namespace OCA\GroupEveryone\Tests;
 
 use OCA\GroupEveryone\GroupBackend;
+use OCA\Guests\UserBackend as GuestUserBackend;
 use OCP\Group\Backend\ICountDisabledInGroup;
 use OCP\Group\Backend\ICountUsersBackend;
 use OCP\Group\Backend\IGetDisplayNameBackend;
 use OCP\Group\Backend\IGroupDetailsBackend;
 use OCP\Group\Backend\INamedBackend;
 use OCP\Group\Backend\ISearchableGroupBackend;
+use OCP\IAppConfig;
 use OCP\IL10N;
 use OCP\IUser;
+use OCP\IUserBackend;
 use OCP\IUserManager;
+use OCP\UserInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use Test\TestCase;
 
 class GroupTest extends TestCase {
 	private IUserManager&MockObject $userManager;
 	private IL10N&MockObject $l10n;
+	private IAppConfig&MockObject $appConfig;
 	private GroupBackend $backend;
+	private bool $excludeGuests = false;
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -34,13 +40,19 @@ class GroupTest extends TestCase {
 		$this->l10n = $this->createMock(IL10N::class);
 		$this->l10n->method('t')
 			->willReturnArgument(0);
-		$this->backend = new GroupBackend($this->userManager, $this->l10n);
+		$this->appConfig = $this->createMock(IAppConfig::class);
+		$this->appConfig->method('getValueBool')
+			->with('group_everyone', 'exclude_guests')
+			->willReturnCallback(fn (): bool => $this->excludeGuests);
+		$this->backend = new GroupBackend($this->userManager, $this->l10n, $this->appConfig);
 	}
 
-	private function getUser(string $name): IUser {
+	private function getUser(string $name, ?string $displayName = null): IUser {
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')
 			->willReturn($name);
+		$user->method('getDisplayName')
+			->willReturn($displayName ?? $name);
 		return $user;
 	}
 
@@ -104,7 +116,7 @@ class GroupTest extends TestCase {
 	 * so a translated display name could not be found.
 	 */
 	public function testGetGroupsHonoursSearchOnDisplayName(): void {
-		$backend = new GroupBackend($this->userManager, $this->l10n, 'virtual_all');
+		$backend = new GroupBackend($this->userManager, $this->l10n, $this->appConfig, 'virtual_all');
 
 		$this->assertEquals(['virtual_all'], $backend->getGroups('every'));
 		$this->assertEquals(['virtual_all'], $backend->getGroups('virtual'));
@@ -246,5 +258,82 @@ class GroupTest extends TestCase {
 			'everyone' => ['displayName' => 'Everyone'],
 			'bar' => [],
 		], $this->backend->getGroupsDetails(['everyone', 'bar']));
+	}
+
+	private function setUpGuests(): GuestUserBackend&MockObject {
+		$database = $this->createMock(UserInterface::class);
+		$database->method('getDisplayNames')
+			->with('filter', 2, 1)
+			->willReturn(['b' => 'B', 'a' => 'A']);
+
+		$guests = $this->createMock(GuestUserBackend::class);
+		$guests->method('userExists')
+			->willReturnCallback(fn (string $uid): bool => $uid === 'guest');
+		$guests->method('countUsers')
+			->willReturn(2);
+		$guests->method('getUsers')
+			->willReturn(['guest']);
+
+		$this->userManager->method('getBackends')
+			->willReturn([$database, $guests]);
+		$this->userManager->method('countUsersTotal')
+			->willReturn(5);
+		$this->userManager->method('countDisabledUsers')
+			->willReturn(2);
+		$this->userManager->method('getDisabledUsers')
+			->willReturn([$this->getUser('c'), $this->getUser('guest')]);
+		$this->userManager->method('getExistingUser')
+			->willReturnCallback(fn (string $uid, ?string $displayName): IUser => $this->getUser($uid, $displayName));
+
+		return $guests;
+	}
+
+	public function testGuestsIncludedByDefault(): void {
+		$this->setUpGuests();
+		$this->userManager->method('searchDisplayName')
+			->with('filter', 2, 1)
+			->willReturn([$this->getUser('a'), $this->getUser('b'), $this->getUser('guest')]);
+
+		$this->assertTrue($this->backend->inGroup('guest', 'everyone'));
+		$this->assertEquals(['everyone'], $this->backend->getUserGroups('guest'));
+		$this->assertEquals(5, $this->backend->countUsersInGroup('everyone'));
+		$this->assertEquals(2, $this->backend->countDisabledInGroup('everyone'));
+		$this->assertEquals(['a', 'b', 'guest'], $this->backend->usersInGroup('everyone', 'filter', 2, 1));
+	}
+
+	public function testExcludeGuests(): void {
+		$guests = $this->setUpGuests();
+		$this->excludeGuests = true;
+
+		// Guests have to be left out without listing or loading them one by one
+		$guests->expects($this->never())
+			->method('getDisplayNames');
+		$this->userManager->expects($this->never())
+			->method('searchDisplayName');
+		$this->userManager->expects($this->never())
+			->method('get');
+
+		$this->assertTrue($this->backend->inGroup('a', 'everyone'));
+		$this->assertFalse($this->backend->inGroup('guest', 'everyone'));
+		$this->assertEquals(['everyone'], $this->backend->getUserGroups('a'));
+		$this->assertEquals([], $this->backend->getUserGroups('guest'));
+		$this->assertEquals(3, $this->backend->countUsersInGroup('everyone'));
+		$this->assertEquals(1, $this->backend->countDisabledInGroup('everyone'));
+		$this->assertEquals(['a', 'b'], $this->backend->usersInGroup('everyone', 'filter', 2, 1));
+		$this->assertEquals('A', $this->backend->searchInGroup('everyone', 'filter', 2, 1)['a']->getDisplayName());
+		$this->assertEquals(['guest'], $this->backend->getGuestUids());
+	}
+
+	public function testExcludeGuestsIgnoresOtherBackendsNamedGuests(): void {
+		$backend = $this->createMockForIntersectionOfInterfaces([UserInterface::class, IUserBackend::class]);
+		$backend->method('getBackendName')
+			->willReturn('Guests');
+		$backend->method('userExists')
+			->willReturn(true);
+		$this->userManager->method('getBackends')
+			->willReturn([$backend]);
+		$this->excludeGuests = true;
+
+		$this->assertTrue($this->backend->inGroup('user', 'everyone'));
 	}
 }

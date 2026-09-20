@@ -36,6 +36,9 @@ class UserCreatedListenerTest extends TestCase {
 	public function testDispatchesUserAddedEvent(): void {
 		$user = $this->createMock(IUser::class);
 		$group = $this->createMock(IGroup::class);
+		$group->method('inGroup')
+			->with($user)
+			->willReturn(true);
 
 		$this->groupManager->method('get')
 			->with('everyone')
@@ -58,6 +61,21 @@ class UserCreatedListenerTest extends TestCase {
 		$this->groupManager->method('get')
 			->with('everyone')
 			->willReturn(null);
+
+		$this->dispatcher->expects($this->never())
+			->method('dispatchTyped');
+
+		$this->listener->handle(new UserCreatedEvent($this->createMock(IUser::class), ''));
+	}
+
+	public function testIgnoresUserNotInGroup(): void {
+		$group = $this->createMock(IGroup::class);
+		$group->method('inGroup')
+			->willReturn(false);
+
+		$this->groupManager->method('get')
+			->with('everyone')
+			->willReturn($group);
 
 		$this->dispatcher->expects($this->never())
 			->method('dispatchTyped');
