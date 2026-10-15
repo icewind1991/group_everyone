@@ -10,12 +10,14 @@ declare(strict_types=1);
 namespace OCA\GroupEveryone\AppInfo;
 
 use OCA\GroupEveryone\GroupBackend;
+use OCA\GroupEveryone\RestrictSharingListener;
 use OCA\GroupEveryone\UserCreatedListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
 use OCP\IGroupManager;
+use OCP\Share\Events\BeforeShareCreatedEvent;
 use OCP\User\Events\UserCreatedEvent;
 
 class Application extends App implements IBootstrap {
@@ -27,6 +29,7 @@ class Application extends App implements IBootstrap {
 
 	public function register(IRegistrationContext $context): void {
 		$context->registerEventListener(UserCreatedEvent::class, UserCreatedListener::class);
+		$context->registerEventListener(BeforeShareCreatedEvent::class, RestrictSharingListener::class);
 	}
 
 	public function boot(IBootContext $context): void {

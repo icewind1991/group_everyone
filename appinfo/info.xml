@@ -30,5 +30,12 @@
 
 	<commands>
 		<command>OCA\GroupEveryone\Command\ExcludeGuests</command>
+		<command>OCA\GroupEveryone\Command\RestrictSharing</command>
 	</commands>
+
+	<collaboration>
+		<plugins>
+			<plugin type="collaborator-search" share-type="SHARE_TYPE_GROUP">OCA\GroupEveryone\Collaboration\HideEveryonePlugin</plugin>
+		</plugins>
+	</collaboration>
 </info>

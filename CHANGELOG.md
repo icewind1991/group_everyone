@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 ### Added
+- Option to only allow administrators to share with the group:
+  `occ group_everyone:restrict-sharing --on`.
+  Non-admin users then no longer see the group in the share recipient suggestions.
 - Option to exclude guest accounts from the group: `occ group_everyone:exclude-guests --on`.
   [#14](https://github.com/icewind1991/group_everyone/issues/14)
 - Implement `ISearchableGroupBackend`, so the server no longer has to resolve every
