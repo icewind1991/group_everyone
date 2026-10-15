@@ -156,7 +156,12 @@ class GroupBackend extends ABackend implements
 		// A null limit reached this untyped method before and means "no limit"
 		$limit = $limit === null ? -1 : (int)$limit;
 
-		return array_keys($this->searchInGroup((string)$gid, (string)$search, $limit, (int)$offset));
+		// PHP turns numeric string keys into integers, so a numeric uid (as is
+		// common with SAML or LDAP employee ids) has to be cast back to a string.
+		return array_map(
+			strval(...),
+			array_keys($this->searchInGroup((string)$gid, (string)$search, $limit, (int)$offset)),
+		);
 	}
 
 	/**
@@ -184,7 +189,7 @@ class GroupBackend extends ABackend implements
 	public function getGuestUids(): array {
 		$uids = [];
 		foreach ($this->getGuestBackends() as $backend) {
-			$uids = array_merge($uids, $backend->getUsers());
+			$uids = array_merge($uids, array_map(strval(...), $backend->getUsers()));
 		}
 		return $uids;
 	}

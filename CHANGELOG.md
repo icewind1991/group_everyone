@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Implement `ICountDisabledInGroup` and `IGetDisplayNameBackend`.
 
 ### Fixed
+- Numeric user ids were returned as integers by `usersInGroup()`, which made deleting
+  a share with the group, or a file shared with it, fail with a `TypeError`.
 - Group searches no longer return the virtual group for every search term. The
   search term is matched against the group id as well as the translated display
   name, like the database backend does.

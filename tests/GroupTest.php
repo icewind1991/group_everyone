@@ -195,6 +195,20 @@ class GroupTest extends TestCase {
 		$this->assertEquals([], $this->backend->usersInGroup('bar'));
 	}
 
+	/**
+	 * Regression test: numeric uids came back as integers (PHP array keys),
+	 * which made the user manager throw a TypeError when deleting a share
+	 * with the group or a file shared with it.
+	 */
+	public function testUsersInGroupNumericUids(): void {
+		$this->userManager->method('searchDisplayName')
+			->willReturn([
+				$this->getUser('12345'),
+				$this->getUser('a'),
+			]);
+		$this->assertSame(['12345', 'a'], $this->backend->usersInGroup('everyone'));
+	}
+
 	public function testUsersInGroupUnlimited(): void {
 		// -1 has to be translated to null, MySQL rejects a negative LIMIT
 		$this->userManager->expects($this->once())
