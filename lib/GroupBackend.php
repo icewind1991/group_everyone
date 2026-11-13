@@ -37,8 +37,6 @@ class GroupBackend extends ABackend implements
 	ISearchableGroupBackend,
 	ISetDisplayNameBackend {
 	public const GROUP_ID = 'everyone';
-	public const CONFIG_EXCLUDE_GUESTS = 'exclude_guests';
-	public const CONFIG_DISPLAY_NAME = 'display_name';
 
 	public function __construct(
 		private IUserManager $userManager,
@@ -178,7 +176,7 @@ class GroupBackend extends ABackend implements
 			return '';
 		}
 
-		$displayName = $this->appConfig->getValueString(Application::APP_ID, self::CONFIG_DISPLAY_NAME);
+		$displayName = $this->appConfig->getValueString(Application::APP_ID, ConfigLexicon::DISPLAY_NAME);
 		return $displayName !== '' ? $displayName : $this->l10n->t('Everyone');
 	}
 
@@ -187,7 +185,7 @@ class GroupBackend extends ABackend implements
 			return false;
 		}
 
-		$this->appConfig->setValueString(Application::APP_ID, self::CONFIG_DISPLAY_NAME, $displayName);
+		$this->appConfig->setValueString(Application::APP_ID, ConfigLexicon::DISPLAY_NAME, $displayName);
 		return true;
 	}
 
@@ -207,7 +205,7 @@ class GroupBackend extends ABackend implements
 	}
 
 	private function excludeGuests(): bool {
-		return $this->appConfig->getValueBool(Application::APP_ID, self::CONFIG_EXCLUDE_GUESTS);
+		return $this->appConfig->getValueBool(Application::APP_ID, ConfigLexicon::EXCLUDE_GUESTS);
 	}
 
 	/**

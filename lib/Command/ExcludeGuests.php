@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\GroupEveryone\Command;
 
 use OCA\GroupEveryone\AppInfo\Application;
+use OCA\GroupEveryone\ConfigLexicon;
 use OCA\GroupEveryone\GroupBackend;
 use OCP\EventDispatcher\IEventDispatcher;
 use OCP\Group\Events\UserAddedEvent;
@@ -48,10 +49,10 @@ class ExcludeGuests extends Command {
 			return self::INVALID;
 		}
 
-		$excluded = $this->appConfig->getValueBool(Application::APP_ID, GroupBackend::CONFIG_EXCLUDE_GUESTS);
+		$excluded = $this->appConfig->getValueBool(Application::APP_ID, ConfigLexicon::EXCLUDE_GUESTS);
 		if (($on || $off) && $on !== $excluded) {
 			$excluded = $on;
-			$this->appConfig->setValueBool(Application::APP_ID, GroupBackend::CONFIG_EXCLUDE_GUESTS, $excluded);
+			$this->appConfig->setValueBool(Application::APP_ID, ConfigLexicon::EXCLUDE_GUESTS, $excluded);
 			$group = $this->groupManager->get(GroupBackend::GROUP_ID);
 			foreach ($this->backend->getGuestUids() as $uid) {
 				$user = $this->userManager->get($uid);

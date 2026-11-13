@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\GroupEveryone\AppInfo;
 
+use OCA\GroupEveryone\ConfigLexicon;
 use OCA\GroupEveryone\GroupBackend;
 use OCA\GroupEveryone\UserCreatedListener;
 use OCP\AppFramework\App;
@@ -26,6 +27,7 @@ class Application extends App implements IBootstrap {
 	}
 
 	public function register(IRegistrationContext $context): void {
+		$context->registerConfigLexicon(ConfigLexicon::class);
 		$context->registerEventListener(UserCreatedEvent::class, UserCreatedListener::class);
 	}
 
