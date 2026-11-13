@@ -18,6 +18,7 @@ use OCP\Group\Backend\IGetDisplayNameBackend;
 use OCP\Group\Backend\IGroupDetailsBackend;
 use OCP\Group\Backend\INamedBackend;
 use OCP\Group\Backend\ISearchableGroupBackend;
+use OCP\Group\Backend\ISetDisplayNameBackend;
 use OCP\IAppConfig;
 use OCP\IL10N;
 use OCP\IUser;
@@ -33,9 +34,11 @@ class GroupBackend extends ABackend implements
 	IGetDisplayNameBackend,
 	IGroupDetailsBackend,
 	INamedBackend,
-	ISearchableGroupBackend {
+	ISearchableGroupBackend,
+	ISetDisplayNameBackend {
 	public const GROUP_ID = 'everyone';
 	public const CONFIG_EXCLUDE_GUESTS = 'exclude_guests';
+	public const CONFIG_DISPLAY_NAME = 'display_name';
 
 	public function __construct(
 		private IUserManager $userManager,
@@ -171,7 +174,21 @@ class GroupBackend extends ABackend implements
 	}
 
 	public function getDisplayName(string $gid): string {
-		return $gid === $this->groupName ? $this->l10n->t('Everyone') : '';
+		if ($gid !== $this->groupName) {
+			return '';
+		}
+
+		$displayName = $this->appConfig->getValueString(Application::APP_ID, self::CONFIG_DISPLAY_NAME);
+		return $displayName !== '' ? $displayName : $this->l10n->t('Everyone');
+	}
+
+	public function setDisplayName(string $gid, string $displayName): bool {
+		if ($gid !== $this->groupName) {
+			return false;
+		}
+
+		$this->appConfig->setValueString(Application::APP_ID, self::CONFIG_DISPLAY_NAME, $displayName);
+		return true;
 	}
 
 	public function getBackendName(): string {

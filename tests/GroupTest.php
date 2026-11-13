@@ -17,6 +17,7 @@ use OCP\Group\Backend\IGetDisplayNameBackend;
 use OCP\Group\Backend\IGroupDetailsBackend;
 use OCP\Group\Backend\INamedBackend;
 use OCP\Group\Backend\ISearchableGroupBackend;
+use OCP\Group\Backend\ISetDisplayNameBackend;
 use OCP\IAppConfig;
 use OCP\IL10N;
 use OCP\IUser;
@@ -32,6 +33,7 @@ class GroupTest extends TestCase {
 	private IAppConfig&MockObject $appConfig;
 	private GroupBackend $backend;
 	private bool $excludeGuests = false;
+	private string $displayName = '';
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -44,6 +46,9 @@ class GroupTest extends TestCase {
 		$this->appConfig->method('getValueBool')
 			->with('group_everyone', 'exclude_guests')
 			->willReturnCallback(fn (): bool => $this->excludeGuests);
+		$this->appConfig->method('getValueString')
+			->with('group_everyone', 'display_name')
+			->willReturnCallback(fn (): string => $this->displayName);
 		$this->backend = new GroupBackend($this->userManager, $this->l10n, $this->appConfig);
 	}
 
@@ -63,6 +68,7 @@ class GroupTest extends TestCase {
 		$this->assertInstanceOf(IGroupDetailsBackend::class, $this->backend);
 		$this->assertInstanceOf(INamedBackend::class, $this->backend);
 		$this->assertInstanceOf(ISearchableGroupBackend::class, $this->backend);
+		$this->assertInstanceOf(ISetDisplayNameBackend::class, $this->backend);
 	}
 
 	public function testInGroup(): void {
@@ -87,6 +93,30 @@ class GroupTest extends TestCase {
 	public function testGetDisplayName(): void {
 		$this->assertEquals('Everyone', $this->backend->getDisplayName('everyone'));
 		$this->assertEquals('', $this->backend->getDisplayName('something else'));
+	}
+
+	public function testGetCustomDisplayName(): void {
+		$this->displayName = 'All staff';
+
+		$this->assertEquals('All staff', $this->backend->getDisplayName('everyone'));
+		$this->assertEquals(['displayName' => 'All staff'], $this->backend->getGroupDetails('everyone'));
+		$this->assertEquals('', $this->backend->getDisplayName('something else'));
+		$this->assertEquals(['everyone'], $this->backend->getGroups('staff'));
+	}
+
+	public function testSetDisplayName(): void {
+		$this->appConfig->expects($this->once())
+			->method('setValueString')
+			->with('group_everyone', 'display_name', 'All staff');
+
+		$this->assertTrue($this->backend->setDisplayName('everyone', 'All staff'));
+	}
+
+	public function testSetDisplayNameOfOtherGroup(): void {
+		$this->appConfig->expects($this->never())
+			->method('setValueString');
+
+		$this->assertFalse($this->backend->setDisplayName('something else', 'All staff'));
 	}
 
 	public function testGetBackendName(): void {
